@@ -15,7 +15,7 @@ ESP32-CAM · WebSocket · MediaPipe · Multi-Channel Alerts
 
 <br/>
 
-![System Overview](docs/system_overview.jpg)
+![System Overview](docs.1/system_overview.jpg)
 > *ESP32-CAM AI Thinker module used as the video capture and WebSocket streaming unit in the safety system.*
 
 > 🔗 **This repository is an auxiliary safety subsystem applied to the following project:**
@@ -310,7 +310,7 @@ stateDiagram-v2
 
 ```
 esp32cam-hand-detection-safety-system/
-├── docs/
+├── docs.1/
 │   └── system_overview.jpg              # ESP32-CAM hardware photo
 ├── ESP32CAM.ino                         # ESP32-CAM firmware - WebSocket server + camera stream
 ├── Auxiliar_System.py                   # Python client - MediaPipe detection + alert dispatcher
@@ -482,7 +482,7 @@ ESP32-CAM · WebSocket · MediaPipe · Alertas Multicanal
 
 <br/>
 
-![Vista general del sistema](docs/system_overview.jpg)
+![Vista general del sistema](docs.1/system_overview.jpg)
 > *Modulo ESP32-CAM AI Thinker utilizado como unidad de captura de video y streaming WebSocket en el sistema de seguridad.*
 
 > 🔗 **Este repositorio es un subsistema auxiliar de seguridad aplicado al siguiente proyecto:**
@@ -777,7 +777,7 @@ stateDiagram-v2
 
 ```
 esp32cam-hand-detection-safety-system/
-├── docs/
+├── docs.1/
 │   └── system_overview.jpg              # Foto del hardware ESP32-CAM
 ├── ESP32CAM.ino                         # Firmware ESP32-CAM - servidor WebSocket + stream de camara
 ├── Auxiliar_System.py                   # Cliente Python - deteccion MediaPipe + disparador de alertas
