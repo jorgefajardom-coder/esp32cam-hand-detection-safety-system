@@ -8,18 +8,18 @@
 ![WebSocket](https://img.shields.io/badge/Protocol-WebSocket-4B9CD3?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
 
-**Industrial Safety System — Real-Time Hand Detection**  
+**Safety System — Real-Time Hand Detection**
 ESP32-CAM · WebSocket · MediaPipe · Multi-Channel Alerts
 
-**English** | [Español](#sistema-de-detección-de-manos-con-esp32-cam--seguridad-industrial)
+**English** | [Español](#sistema-de-deteccion-de-manos-con-esp32-cam--seguridad)
 
 <br/>
 
 ![System Overview](docs/system_overview.jpg)
 > *ESP32-CAM AI Thinker module used as the video capture and WebSocket streaming unit in the safety system.*
 
-> 🔗 **This repository is an auxiliary safety subsystem applied to the following project:**  
-> **[jorgefajardom-coder/drone-packaging-simulation-unity](https://github.com/jorgefajardom-coder/drone-packaging-simulation-unity)**  
+> 🔗 **This repository is an auxiliary safety subsystem applied to the following project:**
+> **[jorgefajardom-coder/drone-packaging-simulation-unity](https://github.com/jorgefajardom-coder/drone-packaging-simulation-unity)**
 > *Unity-based simulation of a robotic drone assembly cell with articulated arms, C# control systems, JSON-driven motion sequences, gripper and suction tools, multi-arm coordination, and virtual process validation. Focused on robotics, automation, industrial workflows, and realistic interaction between components and mechanisms.*
 
 </div>
@@ -45,11 +45,11 @@ ESP32-CAM · WebSocket · MediaPipe · Multi-Channel Alerts
 
 ## Overview
 
-This project implements a **real-time hand detection safety system** for industrial robotic cells. An **ESP32-CAM AI Thinker** module captures and streams live video over **WebSocket** to a Python client that runs **MediaPipe Hands** for detection. When a hand is detected inside the robot work area, the system triggers a **multi-channel alert** — voice synthesis, email, and Telegram — with a configurable cooldown to prevent alert flooding.
+This project implements a **real-time hand detection safety system** for robotic cells. An **ESP32-CAM AI Thinker** module captures and streams live video over **WebSocket** to a Python client that runs **MediaPipe Hands** for detection. When a hand is detected inside the robot work area, the system triggers a **multi-channel alert** — voice synthesis, email, and Telegram — with a configurable cooldown to prevent alert flooding.
 
 The system is designed as an **auxiliary safety layer** for the robotic drone assembly and palletizing cell of the following project, where it was applied:
 
-> 🔗 **[jorgefajardom-coder/drone-packaging-simulation-unity](https://github.com/jorgefajardom-coder/drone-packaging-simulation-unity)**  
+> 🔗 **[jorgefajardom-coder/drone-packaging-simulation-unity](https://github.com/jorgefajardom-coder/drone-packaging-simulation-unity)**
 > *Unity-based simulation of a robotic drone assembly cell with articulated arms, C# control systems, JSON-driven motion sequences, gripper and suction tools, multi-arm coordination, and virtual process validation. Focused on robotics, automation, industrial workflows, and realistic interaction between components and mechanisms.*
 
 It provides physical-layer operator protection complementary to the CODESYS/FluidSIM automation layer of that project.
@@ -74,34 +74,33 @@ It provides physical-layer operator protection complementary to the CODESYS/Flui
 
 ```mermaid
 graph LR
-    subgraph ESP32["ESP32-CAM (AI Thinker)"]
-        CAM[OV2640 Camera<br/>SVGA · JPEG · 20MHz]
-        WS_SRV[WebSocketsServer<br/>Port 81]
-        LED[LED Flash<br/>GPIO 4]
-        WIFI[Wi-Fi Station<br/>reconnectWiFi()]
-        CAM -->|esp_camera_fb_get| WS_SRV
-        WS_SRV -->|status blinks| LED
+    subgraph ESP32["ESP32-CAM AI Thinker"]
+        CAM["OV2640 Camera - SVGA JPEG 20MHz"]
+        WS_SRV["WebSocketsServer Port 81"]
+        LED["LED Flash GPIO 4"]
+        WIFI["Wi-Fi Station reconnectWiFi"]
+        CAM --> WS_SRV
+        WS_SRV --> LED
         WIFI --> WS_SRV
     end
 
-    subgraph PYTHON["Python Client (Auxiliar_System.py)"]
-        WS_CLI[websockets.connect<br/>ws://192.168.x.x:81]
-        MP[MediaPipe Hands<br/>max_num_hands=2]
-        CV[OpenCV Display<br/>cv2.imshow]
-        ALERT[Alert Dispatcher<br/>cooldown=15s]
-
-        WS_CLI -->|np.frombuffer + cv2.imdecode| MP
-        MP -->|landmarks + detection| CV
-        MP -->|hand detected| ALERT
+    subgraph PYTHON["Python Client Auxiliar_System.py"]
+        WS_CLI["websockets.connect ws://192.168.x.x:81"]
+        MP["MediaPipe Hands max_num_hands=2"]
+        CV["OpenCV Display cv2.imshow"]
+        ALERT["Alert Dispatcher cooldown=15s"]
+        WS_CLI --> MP
+        MP --> CV
+        MP --> ALERT
     end
 
     subgraph NOTIFY["Alert Channels"]
-        TTS[pyttsx3 TTS<br/>"Retire la mano"]
-        EMAIL[smtplib / Gmail<br/>SMTP_PORT=587]
-        TG[Telegram Bot API<br/>sendMessage]
+        TTS["pyttsx3 TTS - Retire la mano"]
+        EMAIL["smtplib Gmail SMTP_PORT=587"]
+        TG["Telegram Bot API sendMessage"]
     end
 
-    WS_SRV -->|Binary WebSocket<br/>JPEG frame bytes| WS_CLI
+    WS_SRV --> WS_CLI
     ALERT --> TTS
     ALERT --> EMAIL
     ALERT --> TG
@@ -115,27 +114,27 @@ graph LR
 
 ```mermaid
 sequenceDiagram
-    participant CAM as OV2640 (ESP32)
+    participant CAM as OV2640 ESP32
     participant WS as WebSocket Server
     participant PY as Python Client
     participant MP as MediaPipe Hands
     participant AL as Alert Dispatcher
 
-    loop Every frame (~5ms delay)
-        CAM->>WS: esp_camera_fb_get() JPEG buffer
-        WS->>PY: broadcastBIN(fb->buf, fb->len)
-        PY->>PY: np.frombuffer cv2.imdecode BGR frame
-        PY->>MP: cvtColor BGR to RGB hands.process()
+    loop Every frame 5ms delay
+        CAM->>WS: esp_camera_fb_get JPEG buffer
+        WS->>PY: broadcastBIN frame bytes
+        PY->>PY: np.frombuffer cv2.imdecode BGR
+        PY->>MP: cvtColor BGR to RGB hands.process
 
         alt Hand detected
             MP-->>PY: multi_hand_landmarks list
-            PY->>PY: draw_landmarks + red rectangle + STOP text
-            PY->>AL: trigger_alert()
+            PY->>PY: draw_landmarks red rectangle STOP text
+            PY->>AL: trigger_alert
 
             alt cooldown elapsed 15s
                 AL->>AL: pyttsx3.say Retire la mano
-                AL->>AL: send_email()
-                AL->>AL: send_telegram_message()
+                AL->>AL: send_email
+                AL->>AL: send_telegram_message
             else cooldown active
                 AL-->>PY: skip alert
             end
@@ -143,7 +142,7 @@ sequenceDiagram
             MP-->>PY: multi_hand_landmarks None
         end
 
-        PY->>PY: cv2.imshow ESP32-CAM Deteccion de Mano
+        PY->>PY: cv2.imshow detection window
     end
 ```
 
@@ -172,8 +171,8 @@ sequenceDiagram
 |--------|------|
 | PWDN | 32 |
 | XCLK | 0 |
-| SIOD (SDA) | 26 |
-| SIOC (SCL) | 27 |
+| SIOD SDA | 26 |
+| SIOC SCL | 27 |
 | Y9-Y2 | 35, 34, 39, 36, 21, 19, 18, 5 |
 | VSYNC | 25 |
 | HREF | 23 |
@@ -191,7 +190,7 @@ sequenceDiagram
 | `pyttsx3` | >=2.90 | Offline TTS voice alert |
 | `smtplib` | stdlib | Email alert via Gmail SMTP |
 | `requests` | >=2.28 | Telegram Bot API calls |
-| `python-dotenv` | >=0.19 | Environment variable loading from `.env` |
+| `python-dotenv` | >=0.19 | Environment variable loading from .env |
 
 ---
 
@@ -202,23 +201,23 @@ The ESP32-CAM and the Python client communicate exclusively over **WebSocket (RF
 ```mermaid
 graph TB
     subgraph FIRMWARE["ESP32-CAM Firmware"]
-        FB["esp_camera_fb_get() camera_fb_t*"]
-        BC["webSocket.broadcastBIN(fb->buf, fb->len)"]
-        RT["esp_camera_fb_return(fb)"]
+        FB["esp_camera_fb_get - camera_fb_t"]
+        BC["webSocket.broadcastBIN buf len"]
+        RT["esp_camera_fb_return fb"]
         FB --> BC --> RT
     end
 
     subgraph TRANSPORT["WebSocket Transport"]
-        WS["ws://ESP32_IP:81 Binary frames JPEG bytes"]
+        WS["ws://ESP32-IP:81 Binary JPEG frames"]
     end
 
     subgraph CLIENT["Python Client"]
-        RCV["websocket.recv() bytes"]
-        DEC["np.frombuffer cv2.imdecode BGR"]
-        PROC["MediaPipe Hands landmarks"]
+        RCV["websocket.recv - bytes"]
+        DEC["np.frombuffer - cv2.imdecode - BGR"]
+        PROC["MediaPipe Hands - landmarks"]
     end
 
-    BC -->|Binary WS frame JPEG payload| WS
+    BC --> WS
     WS --> RCV
     RCV --> DEC --> PROC
 
@@ -268,14 +267,14 @@ stateDiagram-v2
         state COOLDOWN_CHECK {
             [*] --> FIRE : elapsed 15s or more
             [*] --> SKIP : elapsed less than 15s
-            FIRE --> UPDATE_TIMER : last_alert_time now
+            FIRE --> UPDATE_TIMER : update last_alert_time
         }
 
         UPDATE_TIMER --> ALERTS
         state ALERTS {
-            [*] --> TTS : pyttsx3.say
+            [*] --> TTS : pyttsx3
             [*] --> EMAIL : send_email
-            [*] --> TELEGRAM : send_telegram_message
+            [*] --> TELEGRAM : send_telegram
         }
 
         ALERTS --> NO_HAND
@@ -347,19 +346,19 @@ cd esp32cam-hand-detection-safety-system
 
 | Dependency | Version | How to install |
 |------------|---------|----------------|
-| **ESP32 board support** | >=2.0.0 | Boards Manager - search `esp32` by Espressif Systems |
+| **ESP32 board support** | >=2.0.0 | Boards Manager — search `esp32` by Espressif Systems |
 | **esp_camera** | bundled with ESP32 core | Included automatically with ESP32 board package |
 | **WiFi.h** | bundled with ESP32 core | Included automatically with ESP32 board package |
-| **WebSocketsServer** | arduinoWebSockets (Markus Sattler) | Add `.ZIP` library - see step 1 below |
+| **WebSocketsServer** | arduinoWebSockets (Markus Sattler) | Add `.ZIP` library — see step 1 below |
 
-1. Add the ESP32 board URL in **File -> Preferences -> Additional Boards Manager URLs**:
+1. Add the ESP32 board URL in **File → Preferences → Additional Boards Manager URLs**:
    ```
    https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
    ```
-   Then: **Tools -> Boards Manager** -> search `esp32` -> install by **Espressif Systems**
+   Then: **Tools → Boards Manager** → search `esp32` → install by **Espressif Systems**
 
 2. Install the WebSocket library:
-   - **Sketch -> Include Library -> Add .ZIP Library**
+   - **Sketch → Include Library → Add .ZIP Library**
    - Select `arduinoWebSockets-master.zip`
 
 3. Open `ESP32CAM.ino` and set your Wi-Fi credentials:
@@ -368,7 +367,7 @@ cd esp32cam-hand-detection-safety-system
    const char* password = "YOUR_PASSWORD";
    ```
 
-4. Select board: **Tools -> Board -> AI Thinker ESP32-CAM**
+4. Select board: **Tools → Board → AI Thinker ESP32-CAM**
 
 5. Upload and note the IP shown in Serial Monitor at 115200 baud:
    ```
@@ -447,7 +446,7 @@ The detection window opens automatically. Press **`q`** to quit.
 
 ## Authors
 
-**Jorge Andres Fajardo Mora**  
+**Jorge Andres Fajardo Mora**
 **Laura Vanesa Castro Sierra**
 
 ---
@@ -466,7 +465,7 @@ This repository and all its contents — including but not limited to source cod
 ---
 ---
 
-# Sistema de Deteccion de Manos con ESP32-CAM — Seguridad Industrial
+# Sistema de Deteccion de Manos con ESP32-CAM — Seguridad
 
 <div align="center">
 
@@ -476,7 +475,7 @@ This repository and all its contents — including but not limited to source cod
 ![WebSocket](https://img.shields.io/badge/Protocolo-WebSocket-4B9CD3?style=for-the-badge)
 ![Estado](https://img.shields.io/badge/Estado-Activo-success?style=for-the-badge)
 
-**Sistema de Seguridad Industrial — Deteccion de Manos en Tiempo Real**  
+**Sistema de Seguridad — Deteccion de Manos en Tiempo Real**
 ESP32-CAM · WebSocket · MediaPipe · Alertas Multicanal
 
 [English](#esp32-cam-hand-detection-safety-system) | **Español**
@@ -486,8 +485,8 @@ ESP32-CAM · WebSocket · MediaPipe · Alertas Multicanal
 ![Vista general del sistema](docs/system_overview.jpg)
 > *Modulo ESP32-CAM AI Thinker utilizado como unidad de captura de video y streaming WebSocket en el sistema de seguridad.*
 
-> 🔗 **Este repositorio es un subsistema auxiliar de seguridad aplicado al siguiente proyecto:**  
-> **[jorgefajardom-coder/drone-packaging-simulation-unity](https://github.com/jorgefajardom-coder/drone-packaging-simulation-unity)**  
+> 🔗 **Este repositorio es un subsistema auxiliar de seguridad aplicado al siguiente proyecto:**
+> **[jorgefajardom-coder/drone-packaging-simulation-unity](https://github.com/jorgefajardom-coder/drone-packaging-simulation-unity)**
 > *Simulacion en Unity de una celda robotica de ensamblaje de drones con brazos articulados, sistemas de control en C#, secuencias de movimiento impulsadas por JSON, herramientas de gripper y ventosa, coordinacion multi-brazo y validacion virtual de procesos. Enfocada en robotica, automatizacion, flujos de trabajo industriales e interaccion realista entre componentes y mecanismos.*
 
 </div>
@@ -513,11 +512,11 @@ ESP32-CAM · WebSocket · MediaPipe · Alertas Multicanal
 
 ## Descripcion General
 
-Este proyecto implementa un **sistema de seguridad de deteccion de manos en tiempo real** para celdas roboticas industriales. Un modulo **ESP32-CAM AI Thinker** captura y transmite video en vivo sobre **WebSocket** a un cliente Python que ejecuta **MediaPipe Hands** para la deteccion. Cuando se detecta una mano dentro del area de trabajo del robot, el sistema dispara una **alerta multicanal** — sintesis de voz, correo electronico y Telegram — con un cooldown configurable para evitar saturacion de alertas.
+Este proyecto implementa un **sistema de seguridad de deteccion de manos en tiempo real** para celdas roboticas. Un modulo **ESP32-CAM AI Thinker** captura y transmite video en vivo sobre **WebSocket** a un cliente Python que ejecuta **MediaPipe Hands** para la deteccion. Cuando se detecta una mano dentro del area de trabajo del robot, el sistema dispara una **alerta multicanal** — sintesis de voz, correo electronico y Telegram — con un cooldown configurable para evitar saturacion de alertas.
 
 El sistema esta disenado como una **capa de seguridad auxiliar** para la celda robotica de ensamblaje y paletizado de drones del siguiente proyecto, donde fue aplicado:
 
-> 🔗 **[jorgefajardom-coder/drone-packaging-simulation-unity](https://github.com/jorgefajardom-coder/drone-packaging-simulation-unity)**  
+> 🔗 **[jorgefajardom-coder/drone-packaging-simulation-unity](https://github.com/jorgefajardom-coder/drone-packaging-simulation-unity)**
 > *Simulacion en Unity de una celda robotica de ensamblaje de drones con brazos articulados, sistemas de control en C#, secuencias de movimiento impulsadas por JSON, herramientas de gripper y ventosa, coordinacion multi-brazo y validacion virtual de procesos. Enfocada en robotica, automatizacion, flujos de trabajo industriales e interaccion realista entre componentes y mecanismos.*
 
 Proporciona proteccion fisica al operario complementaria a la capa de automatizacion CODESYS/FluidSIM de ese proyecto.
@@ -532,7 +531,7 @@ Proporciona proteccion fisica al operario complementaria a la capa de automatiza
 - 📧 **Alerta por email** — notificacion SMTP/Gmail en deteccion
 - 📱 **Alerta por Telegram** — mensaje a traves de Bot API al chat ID configurado
 - ⏱️ **Sistema de cooldown** — 15 segundos entre alertas para evitar saturacion
-- 💡 **Indicador LED de estado** — el flash GPIO 4 codifica el estado de conexion (2 parpadeos = conectado/desconectado, 3 parpadeos = cliente conectado)
+- 💡 **Indicador LED de estado** — flash GPIO 4 codifica estado de conexion (2 parpadeos = conectado/desconectado, 3 parpadeos = cliente conectado)
 
 ---
 
@@ -542,34 +541,33 @@ Proporciona proteccion fisica al operario complementaria a la capa de automatiza
 
 ```mermaid
 graph LR
-    subgraph ESP32["ESP32-CAM (AI Thinker)"]
-        CAM[Camara OV2640<br/>SVGA · JPEG · 20MHz]
-        WS_SRV[WebSocketsServer<br/>Puerto 81]
-        LED[Flash LED<br/>GPIO 4]
-        WIFI[Wi-Fi Station<br/>reconnectWiFi()]
-        CAM -->|esp_camera_fb_get| WS_SRV
-        WS_SRV -->|parpadeos de estado| LED
+    subgraph ESP32["ESP32-CAM AI Thinker"]
+        CAM["OV2640 Camara - SVGA JPEG 20MHz"]
+        WS_SRV["WebSocketsServer Puerto 81"]
+        LED["Flash LED GPIO 4"]
+        WIFI["Wi-Fi Station reconnectWiFi"]
+        CAM --> WS_SRV
+        WS_SRV --> LED
         WIFI --> WS_SRV
     end
 
-    subgraph PYTHON["Cliente Python (Auxiliar_System.py)"]
-        WS_CLI[websockets.connect<br/>ws://192.168.x.x:81]
-        MP[MediaPipe Hands<br/>max_num_hands=2]
-        CV[Visualizacion OpenCV<br/>cv2.imshow]
-        ALERT[Disparador de Alertas<br/>cooldown=15s]
-
-        WS_CLI -->|np.frombuffer + cv2.imdecode| MP
-        MP -->|landmarks + deteccion| CV
-        MP -->|mano detectada| ALERT
+    subgraph PYTHON["Cliente Python Auxiliar_System.py"]
+        WS_CLI["websockets.connect ws://192.168.x.x:81"]
+        MP["MediaPipe Hands max_num_hands=2"]
+        CV["Visualizacion OpenCV cv2.imshow"]
+        ALERT["Disparador de Alertas cooldown=15s"]
+        WS_CLI --> MP
+        MP --> CV
+        MP --> ALERT
     end
 
     subgraph NOTIFY["Canales de Alerta"]
-        TTS[pyttsx3 TTS<br/>Retire la mano]
-        EMAIL[smtplib / Gmail<br/>SMTP_PORT=587]
-        TG[Telegram Bot API<br/>sendMessage]
+        TTS["pyttsx3 TTS - Retire la mano"]
+        EMAIL["smtplib Gmail SMTP_PORT=587"]
+        TG["Telegram Bot API sendMessage"]
     end
 
-    WS_SRV -->|Frame binario WebSocket<br/>bytes JPEG| WS_CLI
+    WS_SRV --> WS_CLI
     ALERT --> TTS
     ALERT --> EMAIL
     ALERT --> TG
@@ -589,15 +587,15 @@ sequenceDiagram
     participant MP as MediaPipe Hands
     participant AL as Disparador de Alertas
 
-    loop Cada frame 5ms de delay
+    loop Cada frame 5ms delay
         CAM->>WS: esp_camera_fb_get buffer JPEG
-        WS->>PY: broadcastBIN fb->buf fb->len
-        PY->>PY: np.frombuffer cv2.imdecode frame BGR
+        WS->>PY: broadcastBIN bytes del frame
+        PY->>PY: np.frombuffer cv2.imdecode BGR
         PY->>MP: cvtColor BGR a RGB hands.process
 
         alt Mano detectada
-            MP-->>PY: multi_hand_landmarks lista de landmarks
-            PY->>PY: draw_landmarks rectangulo rojo texto STOP
+            MP-->>PY: multi_hand_landmarks lista
+            PY->>PY: draw_landmarks rectangulo rojo STOP
             PY->>AL: trigger_alert
 
             alt Cooldown expirado 15s
@@ -611,7 +609,7 @@ sequenceDiagram
             MP-->>PY: multi_hand_landmarks None
         end
 
-        PY->>PY: cv2.imshow ESP32-CAM Deteccion de Mano
+        PY->>PY: cv2.imshow ventana de deteccion
     end
 ```
 
@@ -640,8 +638,8 @@ sequenceDiagram
 |-------|------|
 | PWDN | 32 |
 | XCLK | 0 |
-| SIOD (SDA) | 26 |
-| SIOC (SCL) | 27 |
+| SIOD SDA | 26 |
+| SIOC SCL | 27 |
 | Y9-Y2 | 35, 34, 39, 36, 21, 19, 18, 5 |
 | VSYNC | 25 |
 | HREF | 23 |
@@ -659,7 +657,7 @@ sequenceDiagram
 | `pyttsx3` | >=2.90 | TTS offline para alerta de voz |
 | `smtplib` | stdlib | Alerta por email via Gmail SMTP |
 | `requests` | >=2.28 | Llamadas a Telegram Bot API |
-| `python-dotenv` | >=0.19 | Carga de variables de entorno desde `.env` |
+| `python-dotenv` | >=0.19 | Carga de variables de entorno desde .env |
 
 ---
 
@@ -670,23 +668,23 @@ La ESP32-CAM y el cliente Python se comunican exclusivamente sobre **WebSocket (
 ```mermaid
 graph TB
     subgraph FIRMWARE["Firmware ESP32-CAM"]
-        FB["esp_camera_fb_get() camera_fb_t*"]
-        BC["webSocket.broadcastBIN(fb->buf, fb->len)"]
-        RT["esp_camera_fb_return(fb)"]
+        FB["esp_camera_fb_get - camera_fb_t"]
+        BC["webSocket.broadcastBIN buf len"]
+        RT["esp_camera_fb_return fb"]
         FB --> BC --> RT
     end
 
     subgraph TRANSPORT["Transporte WebSocket"]
-        WS["ws://IP_ESP32:81 Frames binarios bytes JPEG"]
+        WS["ws://IP-ESP32:81 Frames binarios JPEG"]
     end
 
     subgraph CLIENT["Cliente Python"]
-        RCV["websocket.recv() bytes"]
-        DEC["np.frombuffer cv2.imdecode BGR"]
-        PROC["MediaPipe Hands landmarks"]
+        RCV["websocket.recv - bytes"]
+        DEC["np.frombuffer - cv2.imdecode - BGR"]
+        PROC["MediaPipe Hands - landmarks"]
     end
 
-    BC -->|Frame binario WS payload JPEG| WS
+    BC --> WS
     WS --> RCV
     RCV --> DEC --> PROC
 
@@ -736,14 +734,14 @@ stateDiagram-v2
         state VERIF_COOLDOWN {
             [*] --> DISPARAR : elapsed 15s o mas
             [*] --> OMITIR : elapsed menos de 15s
-            DISPARAR --> ACT_TIMER : last_alert_time ahora
+            DISPARAR --> ACT_TIMER : actualizar last_alert_time
         }
 
         ACT_TIMER --> ALERTAS
         state ALERTAS {
-            [*] --> VOZ : pyttsx3.say
+            [*] --> VOZ : pyttsx3
             [*] --> EMAIL : send_email
-            [*] --> TELEGRAM : send_telegram_message
+            [*] --> TELEGRAM : send_telegram
         }
 
         ALERTAS --> SIN_MANO
@@ -815,19 +813,19 @@ cd esp32cam-hand-detection-safety-system
 
 | Dependencia | Version | Como instalar |
 |-------------|---------|---------------|
-| **Soporte de placa ESP32** | >=2.0.0 | Boards Manager - buscar `esp32` de Espressif Systems |
+| **Soporte de placa ESP32** | >=2.0.0 | Boards Manager — buscar `esp32` de Espressif Systems |
 | **esp_camera** | incluida con el core ESP32 | Se incluye automaticamente con el paquete de placa ESP32 |
 | **WiFi.h** | incluida con el core ESP32 | Se incluye automaticamente con el paquete de placa ESP32 |
 | **WebSocketsServer** | arduinoWebSockets (Markus Sattler) | Agregar libreria `.ZIP` — ver paso 1 abajo |
 
-1. Agregar la URL del paquete ESP32 en **Archivo -> Preferencias -> URLs adicionales para el gestor de placas**:
+1. Agregar la URL del paquete ESP32 en **Archivo → Preferencias → URLs adicionales para el gestor de placas**:
    ```
    https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
    ```
-   Luego: **Herramientas -> Gestor de placas** -> buscar `esp32` -> instalar de **Espressif Systems**
+   Luego: **Herramientas → Gestor de placas** → buscar `esp32` → instalar de **Espressif Systems**
 
 2. Instalar la libreria WebSocket:
-   - **Sketch -> Include Library -> Add .ZIP Library**
+   - **Sketch → Include Library → Add .ZIP Library**
    - Seleccionar `arduinoWebSockets-master.zip`
 
 3. Abrir `ESP32CAM.ino` y configurar las credenciales Wi-Fi:
@@ -836,7 +834,7 @@ cd esp32cam-hand-detection-safety-system
    const char* password = "TU_CONTRASENA";
    ```
 
-4. Seleccionar placa: **Tools -> Board -> AI Thinker ESP32-CAM**
+4. Seleccionar placa: **Tools → Board → AI Thinker ESP32-CAM**
 
 5. Subir el firmware y anotar la IP en el Serial Monitor a 115200 baud:
    ```
@@ -915,7 +913,7 @@ La ventana de deteccion se abre automaticamente. Presionar **`q`** para salir.
 
 ## Autores
 
-**Jorge Andres Fajardo Mora**  
+**Jorge Andres Fajardo Mora**
 **Laura Vanesa Castro Sierra**
 
 ---
